@@ -46,15 +46,25 @@ class Body{
     f_vec v;
     float mass;
     f_vec get_cor(){
-      if (cor_x == -1 && cor_y == -1){
-        caculate_cor();
-      }
       return f_vec({cor_x,cor_y});
     };
+    Body(float _mass, int _num_points, Point* _ptr_to_points){
+      mass = _mass;
+      num_points = _num_points;
+      // this will set the points
+      Point* mem1 = (Point*) malloc(_num_points*sizeof(Point));
+      int i =0;
+      while (i < _num_points) {
+        mem1[i] = *(_ptr_to_points + i);
+        i++;
+      }
+      points = mem1;
+      caculate_cor();
+    }
 
   private:
-    float cor_x = -1;
-    float cor_y = -1;
+    float cor_x;
+    float cor_y;
 
     float find_area(float p0[2], float p1[2]){ 
       // finds the area rel to the body x,y axis
@@ -83,24 +93,36 @@ class Body{
       while (i < num_points) {
         x_sum = points[i].poss.x;
         y_sum = points[i].poss.y;
+        i++;
       }
       cross_hairs[0] = x_sum/num_points;
       cross_hairs[1] = y_sum/num_points;
 
-    }; 
-    
-    Body(float _mass, int _num_points, Point* _ptr_to_points){
-      mass = _mass;
-      num_points = _num_points;
-      // this will set the points
-      Point* mem1 = (Point*) malloc(_num_points*sizeof(Point));
-      int i =0;
-      while (i < _num_points) {
-        mem1[i] = *(_ptr_to_points + i);
-        i++;
+
+    // lets do a y line first
+    Point* obove = (Point*) malloc(sizeof(points)*num_points);
+    int len_obove = 0;
+    Point* below = (Point*) malloc(sizeof(points)*num_points);
+    int len_below = 0;
+
+    // this will sort in obove and below
+    printf("the follwing points are added\nx,   y\n");
+    for (i = 0; i < num_points;i++){
+      printf("%f,",(points+i)->poss.x);
+      printf("%f\n",(points+i)->poss.y);
+      if ((points+i)->poss.y > cross_hairs[1]) {
+        *(obove+i) = *(points+i);
+        len_obove++;
+      } else {
+        *(below+i) = *(points+i);
+        len_below++;
       }
-      points = mem1;
     }
+    printf("above len = %d\n",len_obove);
+    printf("below len = %d\n",len_below);
+
+
+    };
 
 };
 
@@ -111,6 +133,13 @@ void main_loop(){
 }
 
 int main(){
+  Point p0 = Point(f_vec(0,0));
+  Point p1 = Point(f_vec(1,0));
+  Point p2 = Point(f_vec(0,1));
+  Point p3 = Point(f_vec(1,1));
+  Point inp[] = {p0,p1,p2,p3};
+  // printf("point x %F",inp->poss.x);
+  Body(10, 4, inp);
 
   // float points[3] = {1.0,1.0,2.2};
   // float* mem1 = (float*) malloc(3*sizeof(float));
