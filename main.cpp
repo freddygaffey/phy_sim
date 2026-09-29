@@ -1,185 +1,121 @@
 #include "stdio.h"
-#include <cmath>
-#include <cstdio>
 #include <cstdlib>
-#include <pthread.h>
-#include <sys/types.h>
+#include "raylib/src/raylib.h"
 
-class f_vec{
-  // this idear I got from the ardupilo.org progect
-  public:
-    float x;
-    float y;
-    float mag(){return pow((pow(x,2)+pow(y,2)),0.5);}
+#define MAX_EDGE_CNT 1000
 
-    f_vec(float _x, float _y){
-      x=_x;
-      y=_y;}
+float scrMinX = 0;
+float scrMaxX = 4000;
+float scrMinY = 0;
+float scrMaxY = 4000;
+int canvasMaxX = 1000;
+int canvasMaxY = 1000;
 
-    f_vec(float _v[1]){
-      x=_v[0];
-      y=_v[1];}
+struct vtx {
+  vtx* next;
+  vtx* prev;
+  int x;
+  int y;
 
-    f_vec(){
-      x=0;
-      y=0;}
+  vtx(int _x, int _y, vtx* _prev = nullptr, vtx* _next = nullptr){
+    x = _x;
+    y = _y;
+    next = nullptr;
+    prev = nullptr;
+  };
 };
 
-class Point{
+class poly {
   public:
-    f_vec poss;
-    f_vec v = f_vec(0,0);
+    vtx* origin;
+    bool cw;
+    double area;
 
-    Point(f_vec _point){
-      poss = _point;}
-    Point(){poss = f_vec(0,0);}
-};
-
-class Body{
-  public:
-    // this are rel to the body there will be one point that
-    // is points[0] this is the origin then the othere are rel
-    // to that [0,0] point
-    Point* points;
-    int num_points;
-    // this is the volocit of the com
-    f_vec v;
-    float mass;
-    f_vec get_cor(){
-      return f_vec({cor_x,cor_y});
-    };
-    Body(float _mass, int _num_points, Point* _ptr_to_points){
-      mass = _mass;
-      num_points = _num_points;
-      // this will set the points
-      Point* mem1 = (Point*) malloc(_num_points*sizeof(Point));
-      int i =0;
-      while (i < _num_points) {
-        mem1[i] = *(_ptr_to_points + i);
-        i++;
-      }
-      points = mem1;
-      caculate_cor();
+  poly(int* point, int point_count){
+    if (point_count < 3) {
+      printf("commiting suiside\n");
+      printf("^c ples");
+      while (1);
     }
+    vtx* _origin = (vtx*) malloc(sizeof(vtx)*point_count);
+     
+    *(_origin) = vtx(*(point+0),*(point+1),(_origin+point_count),(_origin+1));
 
-  private:
-    float cor_x;
-    float cor_y;
-
-    float find_area(float p0[2], float p1[2]){ 
-      // finds the area rel to the body x,y axis
-      return (abs(p0[0]-p1[0])+abs(p0[1]+p1[1]))*0.5;
+    for (int i = 1; i < (point_count-1)*2; i = i + 2) {
+      *(_origin+i) = vtx(*(point+i),*(point+i+1),(_origin-1),(_origin+1));
     }
+    *(_origin+point_count) = vtx(*(point+point_count*2 -1 ),*(point+point_count*2),(_origin+point_count),(_origin));
+    origin = _origin;
+  };
 
-    void caculate_cor(){ // center of rotaion; in the rel to 0,0 not global
-      // this is a slow and not optimal agrythem with some
-      // assuetion that are baked into it about it beind a
-      // nice shape
-      //
-      // How it works is 
-      // by moving a 'cross hairs' down and across 
-      // it will start at the mean x,y possition 
-      // then caluate the area of all the triangal that make up each secotro
-      // of the cross hairs 
-      // then it will moven them by half the distace each time
-      // it will do all the x fist then y
-      // this will come up with a APROXOMIT SOLUTION
-      float cross_hairs[2];
 
-      // finding the mean center
-      int i = 0;
-      float x_sum = 0;
-      float y_sum = 0;
-      while (i < num_points) {
-        x_sum = points[i].poss.x;
-        y_sum = points[i].poss.y;
-        i++;
+  int validate(vtx* _origin,bool print = false){
+    vtx* next = _origin->next;
+    for (int i = 0; i < MAX_EDGE_CNT; i++){
+      if (print == true) {
+        printf("%d,%d\n",next->x,next->y);
       }
-      cross_hairs[0] = x_sum/num_points;
-      cross_hairs[1] = y_sum/num_points;
-
-
-    // lets do a y line first
-    Point* obove = (Point*) malloc(sizeof(points)*num_points);
-    int len_obove = 0;
-    Point* below = (Point*) malloc(sizeof(points)*num_points);
-    int len_below = 0;
-
-    // this will sort in obove and below
-    printf("the follwing points are added\nx,   y\n");
-    for (i = 0; i < num_points;i++){
-      printf("%f,",(points+i)->poss.x);
-      printf("%f\n",(points+i)->poss.y);
-      if ((points+i)->poss.y > cross_hairs[1]) {
-        *(obove+i) = *(points+i);
-        len_obove++;
-      } else {
-        *(below+i) = *(points+i);
-        len_below++;
+      if (next == _origin){
+        return i;
       }
-    }
-    printf("above len = %d\n",len_obove);
-    printf("below len = %d\n",len_below);
-
-
+      next = next->next;
     };
 
+    return -1;
+  };
 };
 
-void main_loop(){
-
-    // https://cplusplus.com/reference/cstdio/printf/
-    // printf("%i\n",i);
+bool drawVtx(vtx* vertex, float rad = 5)
+{ 
+  printf("%d: %d: %d \n", ((vertex->x)), scrMinX, scrMaxX);
+  DrawCircle(((1.0*(vertex->x))-scrMinX)/scrMaxX * canvasMaxX, (1.0*(vertex->y) - scrMinY)/scrMaxY * canvasMaxY, rad, RED);
+  return true;
 }
 
+bool drawPoly(poly* polygon, float ran = 5, float thick = 2){
+  vtx* c_vtx = polygon->origin;
+  do{
+    drawVtx(c_vtx);
+    c_vtx = c_vtx->next;
+    DrawLine(c_vtx->x,c_vtx->y,c_vtx->next->x,c_vtx->next->y,BLUE);
+
+  } while (c_vtx->next != polygon->origin);
+  return true;
+  
+
+}
+
+
 int main(){
-  Point p0 = Point(f_vec(0,0));
-  Point p1 = Point(f_vec(1,0));
-  Point p2 = Point(f_vec(0,1));
-  Point p3 = Point(f_vec(1,1));
-  Point inp[] = {p0,p1,p2,p3};
-  // printf("point x %F",inp->poss.x);
-  Body(10, 4, inp);
 
-  // float points[3] = {1.0,1.0,2.2};
-  // float* mem1 = (float*) malloc(3*sizeof(float));
-  // int i =0;
-  // while (i < 3) {
-  //   mem1[i] = points[i];
-  //   i++;
-  // }
+  InitWindow(canvasMaxX, canvasMaxY, "raylib example - basic window");
+  // vtx test = vtx(2000, 2000);
+  int _p[3][2] = {{0,0}, {1,1}, {1,0}};
+  int (*p)[2] = &_p[0];
+  poly pollll = poly(p,3);
 
-  // printf("%F\n", mem1[0]);
-  // printf("%F\n", mem1[1]);
-  // printf("%F\n", mem1[2]);
+  //poly has_a_cracker = pol
+    // void DrawPixel(int posX, int posY, Color color); // Draw a pixel using geometry [Can be slow, use with care]
 
+    // void DrawCircle(int centerX, int centerY, float radius, Color color);
+    //     void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);
+    while (!WindowShouldClose())
+    {
+        BeginDrawing();
+            ClearBackground(RAYWHITE);
+            // for (int i = 0;i<1000;i++){
+            //   DrawPixel(i, 100, BLACK);
+            // }
+            // drawVtx(_p);
+            drawPoly(pollll);
 
-    // float points[3] = {0,1,2};
-    // int prt = &points;
-    // *(prt + sizeof(float)*0) = 10;
-    // float * i = *points;
-    // i++;
+        // DrawCircle(10, 10, 5, ORANGE);
+            // DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
+        EndDrawing();
+    }
 
-    // printf("%f\n",*(i));
-    // printf("%f\n",*(prt + sizeof(float)*1));
-    // printf("%f\n",*(prt + sizeof(float)*2));
-    return 0;
-    // Body(int _num_points, u_long _ptr_to_points){
-    //   int* start_men = malloc(sizeof(Point)*_num_points);
-    //   mass = _mass;
-    //   for (int i = 0; i < _num_points; i++){
-    //     printf("%i\n",i);
-    //     // this should be putting the points in the meolry blocks
-    //     // this shold be getting the first memory block then setting
-    //     // it to what is in the next mem block
-    //     float body_i_arr_f = (sizeof(float[2])*i + start_men);
-    //
-    //     body_i = *(_ptr_to_points + sizeof(float[2])*i);
-    //   }
-    // }
-
-  // this is the main main_loop
-  // while (1) {
-  //   main_loop();
-  // }
+    CloseWindow();
+  return 0;
+  // poly(, int point_count) 
+  // return 0;
 }
