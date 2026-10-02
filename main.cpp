@@ -1,4 +1,5 @@
 #include "stdio.h"
+#include <cassert>
 #include <cstdlib>
 #include "raylib/src/raylib.h"
 
@@ -16,12 +17,14 @@ struct vtx {
   vtx* prev;
   int x;
   int y;
+  int point_cnt;
 
-  vtx(int _x, int _y, vtx* _prev = nullptr, vtx* _next = nullptr){
+  vtx(int _x, int _y, vtx* _prev = nullptr, vtx* _next = nullptr, int _point_cnt = 0){
     x = _x;
     y = _y;
-    next = nullptr;
-    prev = nullptr;
+    next = _next;
+    prev = _prev;
+    point_cnt = _point_cnt;
   };
 };
 
@@ -31,23 +34,21 @@ class poly {
     bool cw;
     double area;
 
-  poly(int* point, int point_count){
-    if (point_count < 3) {
-      printf("commiting suiside\n");
-      printf("^c ples");
-      while (1);
+  poly(int* point, int point_cnt){
+    vtx* _origin = (vtx*) malloc(sizeof(vtx)*point_cnt);
+    int x = (*point);
+    int y = (*point+1);
+    *_origin = vtx(x,y,origin+point_cnt,_origin+1);
+    
+    for(int i = 1; i<point_cnt; i++){
+      x = *point+(i*2);
+      y = *point+(i*2)+1;
+      *_origin = vtx(x,y,_origin+(i-1),_origin+(i+1));
     }
-    vtx* _origin = (vtx*) malloc(sizeof(vtx)*point_count);
-     
-    *(_origin) = vtx(*(point+0),*(point+1),(_origin+point_count),(_origin+1));
-
-    for (int i = 1; i < (point_count-1)*2; i = i + 2) {
-      *(_origin+i) = vtx(*(point+i),*(point+i+1),(_origin-1),(_origin+1));
-    }
-    *(_origin+point_count) = vtx(*(point+point_count*2 -1 ),*(point+point_count*2),(_origin+point_count),(_origin));
+    *_origin = vtx(x,y,origin+(point_cnt-1),_origin);
     origin = _origin;
-  };
-
+    assert(validate(origin) != -1);
+  }
 
   int validate(vtx* _origin,bool print = false){
     vtx* next = _origin->next;
@@ -55,7 +56,7 @@ class poly {
       if (print == true) {
         printf("%d,%d\n",next->x,next->y);
       }
-      if (next == _origin){
+      if (next == _origin && i >=3){
         return i;
       }
       next = next->next;
@@ -78,11 +79,8 @@ bool drawPoly(poly* polygon, float ran = 5, float thick = 2){
     drawVtx(c_vtx);
     c_vtx = c_vtx->next;
     DrawLine(c_vtx->x,c_vtx->y,c_vtx->next->x,c_vtx->next->y,BLUE);
-
   } while (c_vtx->next != polygon->origin);
   return true;
-  
-
 }
 
 
@@ -90,9 +88,11 @@ int main(){
 
   InitWindow(canvasMaxX, canvasMaxY, "raylib example - basic window");
   // vtx test = vtx(2000, 2000);
-  int _p[3][2] = {{0,0}, {1,1}, {1,0}};
-  int (*p)[2] = &_p[0];
-  poly pollll = poly(p,3);
+  // int _p[3][2] = {{0,0}, {1,1}, {1,0}};
+  int _p[6]= {0,0, 1,1, 1,0};
+  // int (*p)[2] = &_p[0];
+  poly pollll = poly(&_p[0],3);
+  
 
   //poly has_a_cracker = pol
     // void DrawPixel(int posX, int posY, Color color); // Draw a pixel using geometry [Can be slow, use with care]
@@ -106,8 +106,8 @@ int main(){
             // for (int i = 0;i<1000;i++){
             //   DrawPixel(i, 100, BLACK);
             // }
-            // drawVtx(_p);
-            drawPoly(pollll);
+            // drawVtx();
+            drawPoly(&pollll);
 
         // DrawCircle(10, 10, 5, ORANGE);
             // DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
