@@ -1,7 +1,7 @@
 CXX = c++
 
 # Taken from Tools/ardupilotwaf/boards.py (the clang branch)
-CXXFLAGS = -std=gnu++11 \
+CXXFLAGS = -std=gnu++11 -g \
            -fno-exceptions -fno-rtti \
            -cl-single-precision-constant \
            -fsigned-char \
@@ -11,6 +11,15 @@ CXXFLAGS = -std=gnu++11 \
            -Werror=sign-compare -Werror=switch -Werror=uninitialized \
            -Werror=implicit-fallthrough -Werror=reorder \
            -Wdouble-promotion
+
+# `make debug`: full debug info, no optimisation, plus runtime checkers
+#   -g3                      debug info including macros (e.g. `p MAX_EDGE_CNT`)
+#   -O0 -fno-inline          code runs line-by-line as written, all variables visible
+#   -fno-omit-frame-pointer  reliable backtraces
+#   -fsanitize=address       stops on out-of-bounds / use-after-free with the exact line
+#   -fsanitize=undefined     stops on signed overflow, null deref, bad shifts etc.
+DEBUG_FLAGS = -g3 -O0 -fno-inline -fno-omit-frame-pointer \
+              -fsanitize=address,undefined -fno-sanitize-recover=all
 
 SRCS = $(wildcard *.cpp)
 BANNED_HEADERS = vector|string|map|list|set|unordered_map|memory|functional|thread|mutex|iostream|sstream|fstream|chrono|exception|stdexcept
@@ -35,7 +44,15 @@ check-headers:
 run: prog
 	./prog
 
-clean:
-	rm -f prog
+# Always rebuilds from clean so optimised and debug builds never mix
+debug: CXXFLAGS += $(DEBUG_FLAGS)
+debug: clean prog
 
-.PHONY: check-headers run clean
+# Build debug and launch straight into lldb
+lldb: debug
+	lldb ./prog
+
+clean:
+	rm -rf prog prog.dSYM
+
+.PHONY: check-headers run clean debug lldb

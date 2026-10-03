@@ -38,101 +38,69 @@ class poly {
     bool cw;
     double area;
 
-  poly(int* point, int point_cnt, bool print = false){
+  poly(int* point, int point_cnt){
     vtx* _origin = (vtx*) malloc(sizeof(vtx)*point_cnt);
-    int x;
-    int y;
-    int i = 0; 
+    int x = *point;
+    int y = *(point+1);
 
     vtx* next = _origin+1;
     vtx* prev = _origin+point_cnt;
-
-    // printf("x= %d\n",x);
-    // printf("y= %d\n", y);
-    // printf("next= %p\n", next);
-    // printf("prev= %p\n", prev);
-    // printf("self %p\n",_origin+i);
-    // printf("i= %d\n", i);
-    // printf("---------------\n");
-
-    // *_origin = vtx(x,y,next,prev,i);
-
-    for(; i < point_cnt; i++){
+    *_origin = vtx(x,y,next,prev,0);
+    
+    for(int i = 1; i<point_cnt; i++){
       x = *(point+(i*2));
       y = *(point+(i*2)+1);
-
-      next = _origin+(i+1);
-      prev = _origin+(i-1);
-
-    // printf("x= %d\n",x);
-    // printf("y= %d\n", y);
-    // printf("next= %p\n", next);
-    // printf("prev= %p\n", prev);
-    // printf("self %p\n",_origin+i);
-    // printf("i= %d\n", i);
-    // printf("---------------\n");
-
-      *(_origin+i) = vtx(x,y,prev,next,i);
+      *(_origin+i) = vtx(x,y,_origin+(i-1),_origin+(i+1),i);
     }
-
-    _origin[i].prev = _origin+point_cnt-1;
-    _origin[point_cnt-1].next = _origin;
-
+    *(_origin+point_cnt) = vtx(x,y,_origin+(point_cnt-1),_origin,point_cnt);
     origin = _origin;
-    validate(_origin,true);
+    assert(validate(_origin,true) != -1);
   }
 
   int validate(vtx* _origin,bool print = false){
     vtx* next = _origin;
-    if (print) printf("START validate\n");
+
     int i = 0;
     do{
-      if (print == true) {
-        printf("%d,%d\n",next->x,next->y);
-      }
       next = next->next;
       i++;
 
-    }while(i<MAX_EDGE_CNT && next != _origin);
+      if (print == true) {
+        printf("%d,%d\n",next->x,next->y);
+      }
+    }while(i<MAX_EDGE_CNT || next == _origin);
+
     assert(i >= 3);
-    if (print) printf("END validate\n");
-    return i;
+    return -1;
   };
 };
 
 bool drawVtx(vtx* vertex, float rad = 5)
 { 
   printf("%d,%d\n", ((vertex->x)), (vertex->y));
-  DrawCircle(((1.0*(vertex->x))-scrMinX)/scrMaxX * canvasMaxX, (1.0*(vertex->y) - scrMinY)/scrMaxY * canvasMaxY, rad, RED);
+  // DrawCircle(((1.0*(vertex->x))-scrMinX)/scrMaxX * canvasMaxX, (1.0*(vertex->y) - scrMinY)/scrMaxY * canvasMaxY, rad, RED);
   return true;
 }
 
 bool drawPoly(poly* polygon, float ran = 5, float thick = 2){
   vtx* c_vtx = polygon->origin;
-  DrawLine(1000,1000, 1000,1000,BLUE);
   do{
     drawVtx(c_vtx);
     c_vtx = c_vtx->next;
-    DrawLine(c_vtx->x,c_vtx->y,c_vtx->next->x,c_vtx->next->y,BLUE);
+    // DrawLine(c_vtx->x,c_vtx->y,c_vtx->next->x,c_vtx->next->y,BLUE);
   } while (c_vtx->next != polygon->origin);
   return true;
 }
 
 
 int main(){
-  srand(1000);
-  float i = 0;
-  while (1) {
-    i = rand()/1000; 
-    printf("%f\n",i);
-  }
 
   // InitWindow(canvasMaxX, canvasMaxY, "raylib example - basic window");
 
-  // int _p[8]= {1000,0, 1000,1000, 1000,0, 0,0};
-  // poly pol = poly(&_p[0],4);
+  int _p[6]= {0,0, 1,1, 1,0};
+  poly pol = poly(&_p[0],3);
   
-  // drawPoly(&pol);
+  drawPoly(&pol);
 
   //poly has_a_cracker = pol
     // void DrawPixel(int posX, int posY, Color color); // Draw a pixel using geometry [Can be slow, use with care]
@@ -149,11 +117,13 @@ int main(){
     //         // drawVtx();
     //         drawPoly(&pol);
     //
-    //     DrawCircle(10, 10, 5, ORANGE);
+    //     // DrawCircle(10, 10, 5, ORANGE);
     //         // DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
     //     EndDrawing();
     // }
     //
     // CloseWindow();
   return 0;
+  // poly(, int point_count) 
+  // return 0;
 }
